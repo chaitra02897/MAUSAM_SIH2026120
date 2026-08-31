@@ -13,6 +13,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="config.local.js"></script>
+    <script src="weather.js"></script>
     <style>
         body {
             font-family: 'Plus Jakarta Sans', sans-serif;
@@ -506,18 +508,43 @@
         </form>
     </div>
 
-    <div id="name-screen" class="name-screen is-hidden">
-        <form id="name-form" class="glass-card w-full max-w-md p-8 md:p-12 text-center">
-            <div class="w-16 h-16 mx-auto mb-6 rounded-2xl bg-purple-400/10 border border-purple-300/20 flex items-center justify-center">
-                <i class="fa-solid fa-heart text-2xl text-purple-200"></i>
+    <!-- Location Detection Step -->
+    <section id="location-step" class="hidden flex-grow flex flex-col items-center justify-center p-6 relative z-10">
+        <div class="glass-card w-full max-w-xl p-8 md:p-12 text-center">
+            <div id="location-loading-view">
+                <div class="w-16 h-16 mx-auto mb-6 rounded-2xl bg-purple-400/10 border border-purple-300/20 flex items-center justify-center">
+                    <i class="fa-solid fa-location-crosshairs text-2xl text-purple-200"></i>
+                </div>
+                <p class="text-purple-400 text-[10px] font-black uppercase tracking-[0.25em] mb-3">Locating you</p>
+                <h2 id="location-loading-title" class="text-3xl md:text-4xl font-black text-purple-50 mb-3">Finding your Mausam...</h2>
+                <p id="location-loading-subtitle" class="text-purple-300/60 text-sm font-semibold mb-6">Personalizing your weather experience...</p>
+                <div class="h-2 w-full bg-indigo-950/50 rounded-full overflow-hidden border border-purple-900/30">
+                    <div class="loading-bar h-full bg-gradient-to-r from-purple-500 to-fuchsia-400 shadow-[0_0_15px_rgba(192,132,252,0.5)]"></div>
+                </div>
             </div>
-            <p class="text-purple-400 text-[10px] font-black uppercase tracking-[0.25em] mb-3">A little more personal</p>
-            <h1 class="text-3xl md:text-4xl font-black text-purple-50 mb-3">What should we call you?</h1>
-            <p class="text-purple-300/60 text-sm font-semibold mb-8">We’ll use your name to shape your Mausam.</p>
-            <input id="name-input" type="text" maxlength="40" autocomplete="given-name" placeholder="Your name" class="w-full bg-indigo-950/40 border border-purple-400/20 rounded-2xl px-5 py-4 text-purple-100 placeholder:text-purple-300/30 input-focus transition-all font-semibold mb-5" required>
-            <button type="submit" class="w-full btn-lavender py-4 rounded-2xl font-black text-lg transition-all">Continue <i class="fa-solid fa-arrow-right ml-2 text-sm"></i></button>
-        </form>
-    </div>
+
+            <div id="location-error-view" class="hidden">
+                <div class="w-16 h-16 mx-auto mb-6 rounded-2xl bg-purple-400/10 border border-purple-300/20 flex items-center justify-center">
+                    <i class="fa-solid fa-location-dot text-2xl text-purple-200"></i>
+                </div>
+                <p class="text-purple-400 text-[10px] font-black uppercase tracking-[0.25em] mb-3">Weather access</p>
+                <h2 class="text-3xl md:text-4xl font-black text-purple-50 mb-3">We couldn't access your location</h2>
+                <p class="text-purple-300/60 text-sm font-semibold mb-8">Let us try again or search for a city instead.</p>
+                <div class="flex flex-col md:flex-row items-center justify-center gap-4 mb-6">
+                    <button id="retry-location-btn" type="button" class="px-7 py-3.5 btn-lavender rounded-2xl font-black text-base transition-all">Try Again</button>
+                    <button id="toggle-city-search-btn" type="button" class="px-7 py-3.5 bg-purple-900/40 border border-purple-400/20 text-purple-200 rounded-2xl font-black text-base hover:bg-purple-900/60 transition-all backdrop-blur-md">Search for a city instead</button>
+                </div>
+
+                <div id="city-search-box" class="hidden">
+                    <div class="flex flex-col sm:flex-row gap-3 items-stretch justify-center mt-2">
+                        <input id="city-search-input" type="text" placeholder="Search for a city" class="w-full bg-indigo-950/40 border border-purple-400/20 rounded-2xl px-5 py-4 text-purple-100 placeholder:text-purple-300/30 transition-all font-semibold">
+                        <button id="city-search-btn" type="button" class="px-6 py-3.5 btn-lavender rounded-2xl font-black text-base transition-all">Search</button>
+                    </div>
+                    <p id="city-search-error" class="mt-4 text-sm text-red-300 hidden"></p>
+                </div>
+            </div>
+        </div>
+    </section>
 
     <!-- Celestial Background -->
     <div class="stars"></div>
@@ -675,15 +702,15 @@
                     <div class="space-y-6">
                         <div class="flex justify-between text-sm">
                             <span class="text-purple-300/40 font-bold uppercase tracking-widest">Precipitation</span>
-                            <span id="res-humidity" class="font-black text-purple-200">45%</span>
+                            <span id="res-precipitation" class="font-black text-purple-200">Unavailable</span>
                         </div>
                         <div class="flex justify-between text-sm">
-                            <span class="text-purple-300/40 font-bold uppercase tracking-widest">UV Index</span>
-                            <span id="res-wind" class="font-black text-purple-200">12 km/h</span>
+                            <span class="text-purple-300/40 font-bold uppercase tracking-widest">Wind</span>
+                            <span id="res-uv" class="font-black text-purple-200">Unavailable</span>
                         </div>
                         <div class="flex justify-between text-sm">
                             <span class="text-purple-300/40 font-bold uppercase tracking-widest">AQI</span>
-                            <span id="res-uv" class="font-black text-purple-200">Moderate</span>
+                            <span id="res-aqi" class="font-black text-purple-200">Unavailable</span>
                         </div>
                     </div>
                 </div>
@@ -732,7 +759,19 @@
     </footer>
 
     <script>
-        const fromLogin = new URLSearchParams(window.location.search).has('fromLogin');
+        const fromLogin = new URLSearchParams(window.location.search).get('fromLogin') === '1' ||
+            sessionStorage.getItem('mausamReturningFromLogin') === '1';
+
+        if (fromLogin) {
+            sessionStorage.removeItem('mausamReturningFromLogin');
+        }
+
+        if (fromLogin) {
+            document.getElementById('startup-screen').classList.add('is-hidden');
+            document.getElementById('step1').classList.add('hidden');
+            document.getElementById('name-screen').classList.add('is-hidden');
+            document.getElementById('location-step').classList.remove('hidden');
+        }
 
         let pendingNameAction = null;
 
@@ -750,7 +789,9 @@
             if (fromLogin) {
                 document.getElementById('startup-screen').classList.add('is-hidden');
                 document.getElementById('name-screen').classList.add('is-hidden');
-                goToStep(2);
+                document.getElementById('step1').classList.add('hidden');
+                showLocationStep();
+                return;
             } else {
                 setTimeout(() => {
                     document.getElementById('startup-screen').classList.add('is-hidden');
@@ -767,21 +808,156 @@
             }, 1000);
         });
 
+        function showLocationStep() {
+            const loadingCard = document.getElementById('location-loading-view');
+            const errorCard = document.getElementById('location-error-view');
+            const citySearchBox = document.getElementById('city-search-box');
+            const citySearchError = document.getElementById('city-search-error');
+
+            document.getElementById('location-step').classList.remove('hidden');
+            document.getElementById('startup-screen').classList.add('is-hidden');
+            document.getElementById('name-screen').classList.add('is-hidden');
+            loadingCard.classList.remove('hidden');
+            errorCard.classList.add('hidden');
+            citySearchBox.classList.add('hidden');
+            citySearchError.classList.add('hidden');
+            citySearchError.innerText = '';
+
+            startLocationDetection();
+        }
+
+        function showLocationError() {
+            document.getElementById('location-loading-view').classList.add('hidden');
+            document.getElementById('location-error-view').classList.remove('hidden');
+        }
+
+        async function handleLocationSuccess(position) {
+            const latitude = position.coords.latitude;
+            const longitude = position.coords.longitude;
+
+            try {
+                const location = await window.MausamWeather.getLocationFromCoordinates(latitude, longitude);
+                const cityName = location.cityName || 'Your location';
+                const savedLocation = { city: cityName, latitude, longitude };
+                sessionStorage.setItem('mausamLocation', JSON.stringify(savedLocation));
+                window.mausamLocation = savedLocation;
+
+                const weatherData = await window.MausamWeather.fetchWeatherData({ lat: latitude, lon: longitude, cityName });
+                window.mausamWeatherData = weatherData;
+
+                document.getElementById('location-step').classList.add('hidden');
+                goToStep(2);
+            } catch (error) {
+                console.error('Location weather fetch failed:', error);
+                const fallbackLocation = { city: 'Your location', latitude, longitude };
+                sessionStorage.setItem('mausamLocation', JSON.stringify(fallbackLocation));
+                window.mausamLocation = fallbackLocation;
+                window.mausamWeatherData = null;
+                document.getElementById('location-step').classList.add('hidden');
+                goToStep(2);
+            }
+        }
+
+        function handleLocationFailure() {
+            showLocationError();
+        }
+
+        function startLocationDetection() {
+            const loadingBar = document.querySelector('#location-loading-view .loading-bar');
+            if (loadingBar) {
+                loadingBar.style.width = '0%';
+                requestAnimationFrame(() => {
+                    loadingBar.style.width = '100%';
+                });
+            }
+
+            if (!navigator.geolocation) {
+                handleLocationFailure();
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(
+                async (position) => {
+                    await handleLocationSuccess(position);
+                },
+                (error) => {
+                    console.warn('Geolocation failed:', error);
+                    handleLocationFailure();
+                },
+                { enableHighAccuracy: true, timeout: 20000, maximumAge: 600000 }
+            );
+        }
+
+        async function searchCityLocation() {
+            const cityInput = document.getElementById('city-search-input');
+            const cityValue = cityInput.value.trim();
+            const errorText = document.getElementById('city-search-error');
+
+            if (!cityValue) {
+                errorText.innerText = 'Please enter a city name.';
+                errorText.classList.remove('hidden');
+                return;
+            }
+
+            try {
+                const cityData = await window.MausamWeather.searchCity(cityValue);
+                if (!cityData) {
+                    errorText.innerText = 'City not found. Please try another city.';
+                    errorText.classList.remove('hidden');
+                    return;
+                }
+
+                const savedLocation = {
+                    city: cityData.cityName,
+                    latitude: cityData.latitude,
+                    longitude: cityData.longitude
+                };
+                sessionStorage.setItem('mausamLocation', JSON.stringify(savedLocation));
+                window.mausamLocation = savedLocation;
+
+                const weatherData = await window.MausamWeather.fetchWeatherData({
+                    lat: cityData.latitude,
+                    lon: cityData.longitude,
+                    cityName: cityData.cityName
+                });
+                window.mausamWeatherData = weatherData;
+
+                document.getElementById('location-step').classList.add('hidden');
+                goToStep(2);
+            } catch (error) {
+                console.error('City search error:', error);
+                errorText.innerText = 'We could not find that city. Please try another one.';
+                errorText.classList.remove('hidden');
+            }
+        }
+
+        document.getElementById('retry-location-btn').addEventListener('click', () => {
+            showLocationStep();
+        });
+
+        document.getElementById('toggle-city-search-btn').addEventListener('click', () => {
+            const citySearchBox = document.getElementById('city-search-box');
+            citySearchBox.classList.toggle('hidden');
+            if (!citySearchBox.classList.contains('hidden')) {
+                setTimeout(() => document.getElementById('city-search-input').focus(), 50);
+            }
+        });
+
+        document.getElementById('city-search-btn').addEventListener('click', searchCityLocation);
+        document.getElementById('city-search-input').addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                searchCityLocation();
+            }
+        });
+
         document.getElementById('name-form').addEventListener('submit', event => {
             event.preventDefault();
             const userName = document.getElementById('name-input').value.trim();
             if (!userName) return;
 
             sessionStorage.setItem('mausamUserName', userName);
-            document.getElementById('name-screen').classList.add('is-hidden');
-
-            if (pendingNameAction === 'guest') {
-                goToStep(2);
-            } else if (pendingNameAction === 'login') {
-                window.location.href = '01-Mausam - Login.html';
-            }
-
-            pendingNameAction = null;
+            sessionStorage.setItem('mausamLoginPending', '1');
+            window.location.href = '01-Mausam - Login.html?returnToLocation=1';
         });
 
         let currentQuestion = 0;
@@ -960,6 +1136,24 @@
             }
         }
 
+        function applyWeatherDataToResults() {
+            const liveData = window.mausamWeatherData || null;
+            if (!liveData) return;
+
+            const tempText = Number.isFinite(liveData.temperatureC) ? `${Math.round(liveData.temperatureC)}°C` : 'Unavailable';
+            const conditionText = liveData.weatherCondition || 'Unavailable';
+            const precipitationText = Number.isFinite(liveData.precipitation) ? `${Number(liveData.precipitation).toFixed(1)} mm` : 'Unavailable';
+            const windText = Number.isFinite(liveData.windSpeedKmh) ? `${Math.round(liveData.windSpeedKmh)} km/h` : 'Unavailable';
+            const aqiText = Number.isFinite(liveData.aqi) ? `${liveData.aqiLabel || liveData.aqi}` : 'Unavailable';
+
+            document.getElementById('res-temp').innerText = tempText;
+            document.getElementById('res-condition').innerText = conditionText;
+            document.getElementById('res-precipitation').innerText = precipitationText;
+            document.getElementById('res-uv').innerText = windText;
+            document.getElementById('res-aqi').innerText = aqiText;
+            document.getElementById('res-icon').className = `fa-solid ${liveData.iconClass || 'fa-cloud-sun'} text-purple-200 text-2xl`;
+        }
+
         function generateResults() {
             const climatePref = answers[0];
             const vibePref = answers[1];
@@ -979,6 +1173,19 @@
             } else {
                 resTemp = '27°C'; resIcon = 'fa-sun'; resCondition = 'Solar Radiance';
                 resAnalysis = "Your heart is a small sun. Your Mausam profile maximizes golden hour windows and energy-rich environments.";
+            }
+
+            if (window.mausamWeatherData) {
+                const live = window.mausamWeatherData;
+                if (Number.isFinite(live.temperatureC)) {
+                    resTemp = `${Math.round(live.temperatureC)}°C`;
+                }
+                if (live.weatherCondition) {
+                    resCondition = live.weatherCondition;
+                }
+                if (live.iconClass) {
+                    resIcon = live.iconClass;
+                }
             }
 
             const responseProfiles = {
@@ -1078,9 +1285,13 @@
             document.getElementById('res-page-subtitle').innerText = profile.subtitle;
             document.getElementById('res-analysis').innerText = profile.analysis;
 
-            document.getElementById('res-temp').innerText = resTemp;
-            document.getElementById('res-icon').className = `fa-solid ${resIcon} text-purple-200`;
-            document.getElementById('res-condition').innerText = resCondition;
+            if (!window.mausamWeatherData) {
+                document.getElementById('res-temp').innerText = resTemp;
+                document.getElementById('res-icon').className = `fa-solid ${resIcon} text-purple-200`;
+                document.getElementById('res-condition').innerText = resCondition;
+            } else {
+                applyWeatherDataToResults();
+            }
             document.getElementById('res-greeting').innerText = `Hello, ${sessionStorage.getItem('mausamUserName') || 'Traveler'}`;
 
             const activitiesContainer = document.getElementById('res-activities');

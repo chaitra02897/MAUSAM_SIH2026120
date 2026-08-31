@@ -118,7 +118,22 @@
         .scroll-down-btn:hover {
             background: rgba(76, 29, 149, 0.85);
         }
+
     </style>
+    <script>
+        function handleLoginSubmit(event) {
+            event.preventDefault();
+
+            const returnToLocation = new URLSearchParams(window.location.search).get('returnToLocation') === '1';
+            const loginPending = sessionStorage.getItem('mausamLoginPending') === '1';
+
+            if (loginPending) {
+                sessionStorage.removeItem('mausamLoginPending');
+                sessionStorage.setItem('mausamReturningFromLogin', '1');
+                window.location.href = 'index.html?fromLogin=1';
+            }
+        }
+    </script>
 </head>
 <body class="min-h-screen flex flex-col justify-center items-center p-6">
 
@@ -164,7 +179,7 @@
         </div>
 
         <div class="glass-card p-10 md:p-12">
-            <form onsubmit="event.preventDefault(); window.location.href='index.html?fromLogin=1';" class="space-y-8">
+            <form onsubmit="handleLoginSubmit(event)" class="space-y-8">
                 <div class="space-y-3">
                     <label class="block text-xs font-black text-purple-400 uppercase tracking-widest ml-1">Ethereal Address</label>
                     <input type="email" placeholder="you@nebula.com" class="w-full bg-indigo-950/30 border border-purple-400/10 rounded-2xl px-6 py-4 text-purple-100 placeholder:text-purple-300/20 input-focus transition-all font-semibold" required>
