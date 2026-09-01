@@ -962,7 +962,7 @@
 
             sessionStorage.setItem('mausamUserName', userName);
             sessionStorage.setItem('mausamLoginPending', '1');
-            window.location.href = '01-Mausam - Login.html?returnToLocation=1';
+            window.location.href = 'login.html?returnToLocation=1';
         });
 
         let currentQuestion = 0;
@@ -1022,7 +1022,31 @@
             }
         ];
 
-        function continueToFinalPage() {
+        async function savePreferences() {
+            const response = await fetch('/api/auth/preferences', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({
+                    daily_routine: answers[0],
+                    outdoor_time: answers[1],
+                    weather_interests: answers[2],
+                    weather_use: answers[3]
+                })
+            });
+
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(payload.error || 'Unable to save preferences');
+            }
+        }
+
+        async function continueToFinalPage() {
+            try {
+                await savePreferences();
+            } catch (error) {
+                console.error('Preference save failed:', error);
+            }
             generateResults();
             goToStep(4);
         }
