@@ -1,0 +1,12 @@
+{
+  "name": "mausam-app",
+  "private": true,
+  "version": "1.0.0",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "mysql2": "^3.24.2"
+  }
+}
