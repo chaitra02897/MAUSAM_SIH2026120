@@ -616,8 +616,8 @@
                         <button onclick="showNamePrompt('login')" class="px-7 py-3.5 btn-lavender rounded-3xl font-black text-base md:text-lg transition-all">
                             Login to Begin <i class="fa-solid fa-sparkles ml-3 text-sm"></i>
                         </button>
-                        <button onclick="showNamePrompt('guest')" class="px-7 py-3.5 bg-purple-900/40 border border-purple-400/20 text-purple-200 rounded-3xl font-black text-base md:text-lg hover:bg-purple-900/60 transition-all backdrop-blur-md">
-                            Explore as Guest
+                        <button onclick="showNamePrompt('register')" class="px-7 py-3.5 bg-purple-900/40 border border-purple-400/20 text-purple-200 rounded-3xl font-black text-base md:text-lg hover:bg-purple-900/60 transition-all backdrop-blur-md">
+                            Create Account
                         </button>
                     </div>
                 </div>
@@ -764,38 +764,48 @@
     </footer>
 
     <script>
-        const fromLogin = new URLSearchParams(window.location.search).get('fromLogin') === '1' ||
+        const routeParams = new URLSearchParams(window.location.search);
+        const fromLogin = routeParams.get('fromLogin') === '1' ||
             sessionStorage.getItem('mausamReturningFromLogin') === '1';
+        const fromRegister = routeParams.get('fromRegister') === '1';
+        const authState = JSON.parse(sessionStorage.getItem('mausamAuthState') || 'null');
 
         if (fromLogin) {
             sessionStorage.removeItem('mausamReturningFromLogin');
         }
 
-        if (fromLogin) {
+        if (fromLogin || fromRegister) {
             document.getElementById('startup-screen').classList.add('is-hidden');
             document.getElementById('step1').classList.add('hidden');
             document.getElementById('name-screen').classList.add('is-hidden');
-            document.getElementById('location-step').classList.remove('hidden');
         }
 
         let pendingNameAction = null;
 
         function showNamePrompt(action) {
-            pendingNameAction = action;
-            document.getElementById('startup-screen').classList.add('is-hidden');
-            document.getElementById('name-screen').classList.remove('is-hidden');
-            const nameInput = document.getElementById('name-input');
-            nameInput.value = sessionStorage.getItem('mausamUserName') || '';
-            setTimeout(() => nameInput.focus(), 50);
+            const mode = action === 'register' ? 'register' : 'login';
+            window.location.href = `login.html?mode=${mode}`;
         }
 
         // Hero Entrance Animation
         window.addEventListener('load', () => {
+            if (fromRegister) {
+                document.getElementById('startup-screen').classList.add('is-hidden');
+                document.getElementById('name-screen').classList.add('is-hidden');
+                document.getElementById('step1').classList.add('hidden');
+                goToStep(2);
+                return;
+            }
+
             if (fromLogin) {
                 document.getElementById('startup-screen').classList.add('is-hidden');
                 document.getElementById('name-screen').classList.add('is-hidden');
                 document.getElementById('step1').classList.add('hidden');
-                showLocationStep();
+                if (authState && authState.onboardingCompleted && authState.location) {
+                    showSavedDashboard(authState.location);
+                } else {
+                    goToStep(2);
+                }
                 return;
             } else {
                 setTimeout(() => {
@@ -846,12 +856,17 @@
                 const savedLocation = { city: cityName, latitude, longitude };
                 sessionStorage.setItem('mausamLocation', JSON.stringify(savedLocation));
                 window.mausamLocation = savedLocation;
+                await saveLocationToAccount(savedLocation);
 
                 const weatherData = await window.MausamWeather.fetchWeatherData({ lat: latitude, lon: longitude, cityName });
                 window.mausamWeatherData = weatherData;
 
                 document.getElementById('location-step').classList.add('hidden');
-                goToStep(2);
+                if (fromRegister) {
+                    goToStep(4);
+                } else {
+                    goToStep(2);
+                }
             } catch (error) {
                 console.error('Location weather fetch failed:', error);
                 const fallbackLocation = { city: 'Your location', latitude, longitude };
@@ -859,7 +874,12 @@
                 window.mausamLocation = fallbackLocation;
                 window.mausamWeatherData = null;
                 document.getElementById('location-step').classList.add('hidden');
-                goToStep(2);
+                if (fromRegister) {
+                    await saveLocationToAccount(fallbackLocation);
+                    goToStep(4);
+                } else {
+                    goToStep(2);
+                }
             }
         }
 
@@ -919,6 +939,7 @@
                 };
                 sessionStorage.setItem('mausamLocation', JSON.stringify(savedLocation));
                 window.mausamLocation = savedLocation;
+                await saveLocationToAccount(savedLocation);
 
                 const weatherData = await window.MausamWeather.fetchWeatherData({
                     lat: cityData.latitude,
@@ -928,7 +949,11 @@
                 window.mausamWeatherData = weatherData;
 
                 document.getElementById('location-step').classList.add('hidden');
-                goToStep(2);
+                if (fromRegister) {
+                    goToStep(4);
+                } else {
+                    goToStep(2);
+                }
             } catch (error) {
                 console.error('City search error:', error);
                 errorText.innerText = 'We could not find that city. Please try another one.';
@@ -961,8 +986,7 @@
             if (!userName) return;
 
             sessionStorage.setItem('mausamUserName', userName);
-            sessionStorage.setItem('mausamLoginPending', '1');
-            window.location.href = 'login.html?returnToLocation=1';
+            showNamePrompt('login');
         });
 
         let currentQuestion = 0;
@@ -1041,9 +1065,56 @@
             }
         }
 
+        async function saveLocationToAccount(location) {
+            const response = await fetch('/api/auth/preferences', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({
+                    locationCity: location.city,
+                    latitude: location.latitude,
+                    longitude: location.longitude
+                })
+            });
+
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(payload.error || 'Unable to save location');
+            }
+        }
+
+        async function showSavedDashboard(location) {
+            try {
+                if (authState && authState.preferences) {
+                    answers = [
+                        authState.preferences.dailyRoutine,
+                        authState.preferences.outdoorTime,
+                        authState.preferences.weatherInterests,
+                        authState.preferences.weatherUse
+                    ];
+                }
+                sessionStorage.setItem('mausamLocation', JSON.stringify(location));
+                window.mausamLocation = location;
+                window.mausamWeatherData = await window.MausamWeather.fetchWeatherData({
+                    lat: location.latitude,
+                    lon: location.longitude,
+                    cityName: location.city
+                });
+            } catch (error) {
+                console.error('Saved location weather fetch failed:', error);
+                window.mausamWeatherData = null;
+            }
+            generateResults();
+            goToStep(4);
+        }
+
         async function continueToFinalPage() {
             try {
                 await savePreferences();
+                if (fromRegister) {
+                    showLocationStep();
+                    return;
+                }
             } catch (error) {
                 console.error('Preference save failed:', error);
             }

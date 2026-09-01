@@ -2,8 +2,9 @@ const bcrypt = require('bcryptjs');
 const {
     createSession,
     getPool,
+    isValidCustomId,
     isValidEmail,
-    normalizeEmail,
+    normalizeCustomId,
     readJson,
     sendJson
 } = require('../../lib/auth');
@@ -18,19 +19,22 @@ module.exports = async function login(req, res) {
 
     try {
         const body = await readJson(req);
-        const email = normalizeEmail(body.email);
+        const customId = normalizeCustomId(body.customId || body.username || body.email);
         const password = typeof body.password === 'string' ? body.password : '';
 
-        if (!isValidEmail(email) || !password) {
+        if ((!isValidCustomId(customId) && !isValidEmail(customId)) || !password) {
             return sendJson(res, 401, { error: INVALID_CREDENTIALS });
         }
 
         const [rows] = await getPool().execute(
-            `SELECT l.user_id, l.password_hash, u.name
+                    `SELECT l.user_id, l.custom_id, l.password_hash, u.name,
+                        u.daily_routine, u.outdoor_time, u.weather_interests, u.weather_use,
+                        u.onboarding_completed, u.location_city,
+                        u.location_latitude, u.location_longitude
              FROM login_data AS l
              JOIN users AS u ON u.user_id = l.user_id
-             WHERE l.email = ?`,
-            [email]
+             WHERE l.custom_id = ? OR l.email = ?`,
+            [customId, customId]
         );
         const account = rows[0];
         const passwordMatches = account
@@ -43,7 +47,23 @@ module.exports = async function login(req, res) {
 
         await createSession(account.user_id, res);
         return sendJson(res, 200, {
-            user: { user_id: account.user_id, name: account.name, email }
+            user: {
+                user_id: account.user_id,
+                name: account.name,
+                customId: account.custom_id,
+                onboardingCompleted: Boolean(account.onboarding_completed),
+                location: account.location_city ? {
+                    city: account.location_city,
+                    latitude: Number(account.location_latitude),
+                    longitude: Number(account.location_longitude)
+                } : null,
+                preferences: {
+                    dailyRoutine: account.daily_routine,
+                    outdoorTime: account.outdoor_time,
+                    weatherInterests: account.weather_interests,
+                    weatherUse: account.weather_use
+                }
+            }
         });
     } catch (error) {
         if (error.statusCode) {

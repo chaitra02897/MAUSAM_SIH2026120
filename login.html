@@ -121,15 +121,31 @@
 
     </style>
     <script>
+        function setupAuthMode() {
+            const isRegisterMode = new URLSearchParams(window.location.search).get('mode') === 'register';
+            const form = document.getElementById('auth-form');
+            const confirmGroup = document.getElementById('confirm-password-group');
+            const submitLabel = document.getElementById('auth-submit-label');
+            const modeLink = document.getElementById('auth-mode-link');
+
+            form.dataset.mode = isRegisterMode ? 'register' : 'login';
+            confirmGroup.classList.toggle('hidden', !isRegisterMode);
+            submitLabel.textContent = isRegisterMode ? 'Create Account' : 'Enter Mausam';
+            modeLink.textContent = isRegisterMode ? 'Already aligned? Log in' : 'New traveler? Create Orbit';
+            modeLink.href = isRegisterMode ? 'login.html?mode=login' : 'login.html?mode=register';
+        }
+
         async function handleLoginSubmit(event) {
             event.preventDefault();
 
             const returnToLocation = new URLSearchParams(window.location.search).get('returnToLocation') === '1';
             const loginPending = sessionStorage.getItem('mausamLoginPending') === '1';
             const form = event.currentTarget;
+            const isRegisterMode = form.dataset.mode === 'register';
             const submitButton = form.querySelector('button[type="submit"]');
-            const email = form.querySelector('input[type="email"]').value.trim();
+            const customId = form.querySelector('#auth-custom-id').value.trim();
             const password = form.querySelector('input[type="password"]').value;
+            const confirmPassword = form.querySelector('#confirm-password').value;
             let errorMessage = form.querySelector('[data-login-error]');
 
             if (!errorMessage) {
@@ -144,11 +160,13 @@
             submitButton.setAttribute('aria-busy', 'true');
 
             try {
-                const response = await fetch('/api/auth/login', {
+                const response = await fetch(isRegisterMode ? '/api/auth/register' : '/api/auth/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'same-origin',
-                    body: JSON.stringify({ email, password })
+                    body: JSON.stringify(isRegisterMode
+                        ? { customId, password, confirmPassword }
+                        : { customId, password })
                 });
                 const payload = await response.json().catch(() => ({}));
 
@@ -160,7 +178,19 @@
                     sessionStorage.setItem('mausamUserName', payload.user.name);
                 }
 
-                if (loginPending || returnToLocation) {
+                if (isRegisterMode) {
+                    sessionStorage.setItem('mausamAuthState', JSON.stringify({
+                        onboardingCompleted: false,
+                        preferences: null,
+                        location: null
+                    }));
+                    window.location.href = 'index.html?fromRegister=1';
+                } else {
+                    sessionStorage.setItem('mausamAuthState', JSON.stringify({
+                        onboardingCompleted: Boolean(payload.user && payload.user.onboardingCompleted),
+                        preferences: payload.user && payload.user.preferences,
+                        location: payload.user && payload.user.location
+                    }));
                     sessionStorage.removeItem('mausamLoginPending');
                     sessionStorage.setItem('mausamReturningFromLogin', '1');
                     window.location.href = 'index.html?fromLogin=1';
@@ -217,21 +247,26 @@
         </div>
 
         <div class="glass-card p-10 md:p-12">
-            <form onsubmit="handleLoginSubmit(event)" class="space-y-8">
+            <form id="auth-form" onsubmit="handleLoginSubmit(event)" class="space-y-8">
                 <div class="space-y-3">
-                    <label class="block text-xs font-black text-purple-400 uppercase tracking-widest ml-1">Ethereal Address</label>
-                    <input id="login-email" type="email" placeholder="you@nebula.com" class="w-full bg-indigo-950/30 border border-purple-400/10 rounded-2xl px-6 py-4 text-purple-100 placeholder:text-purple-300/20 input-focus transition-all font-semibold" required>
+                    <label class="block text-xs font-black text-purple-400 uppercase tracking-widest ml-1">Custom ID</label>
+                    <input id="auth-custom-id" type="text" minlength="3" maxlength="50" autocomplete="username" placeholder="Choose your custom ID" class="w-full bg-indigo-950/30 border border-purple-400/10 rounded-2xl px-6 py-4 text-purple-100 placeholder:text-purple-300/20 input-focus transition-all font-semibold" required>
                 </div>
                 <div class="space-y-3">
                     <div class="flex justify-between mb-1 px-1">
                         <label class="block text-xs font-black text-purple-400 uppercase tracking-widest">Secret Key</label>
                         <a href="#" class="text-[10px] text-purple-300/40 font-black hover:text-purple-300 transition-colors uppercase tracking-widest">Lost in orbit?</a>
                     </div>
-                    <input id="login-password" type="password" placeholder="••••••••" class="w-full bg-indigo-950/30 border border-purple-400/10 rounded-2xl px-6 py-4 text-purple-100 placeholder:text-purple-300/20 input-focus transition-all font-semibold" required>
+                    <input id="login-password" type="password" minlength="8" autocomplete="new-password" placeholder="••••••••" class="w-full bg-indigo-950/30 border border-purple-400/10 rounded-2xl px-6 py-4 text-purple-100 placeholder:text-purple-300/20 input-focus transition-all font-semibold" required>
+                </div>
+
+                <div id="confirm-password-group" class="space-y-3 hidden">
+                    <label class="block text-xs font-black text-purple-400 uppercase tracking-widest ml-1">Confirm Secret Key</label>
+                    <input id="confirm-password" type="password" minlength="8" autocomplete="new-password" placeholder="Repeat your secret key" class="w-full bg-indigo-950/30 border border-purple-400/10 rounded-2xl px-6 py-4 text-purple-100 placeholder:text-purple-300/20 input-focus transition-all font-semibold">
                 </div>
 
                 <button type="submit" class="w-full btn-lavender py-5 rounded-[2rem] font-black text-lg transition-all active:scale-[0.98]">
-                    Enter Mausam <i class="fa-solid fa-sparkles ml-2 text-sm"></i>
+                    <span id="auth-submit-label">Enter Mausam</span> <i class="fa-solid fa-sparkles ml-2 text-sm"></i>
                 </button>
 
                 <div class="relative flex items-center py-6">
@@ -254,7 +289,7 @@
         </div>
 
         <p class="text-center mt-10 text-sm text-purple-400/50 font-bold uppercase tracking-widest">
-            New traveler? <a href="#" class="text-purple-200 font-black hover:underline ml-1">Create Orbit</a>
+            <a id="auth-mode-link" href="login.html?mode=register" class="text-purple-200 font-black hover:underline ml-1">New traveler? Create Orbit</a>
         </p>
     </div>
 
@@ -266,5 +301,8 @@
         Scroll Down <i class="fa-solid fa-arrow-down ml-1"></i>
     </button>
 
+    <script>
+        setupAuthMode();
+    </script>
 </body>
 </html>

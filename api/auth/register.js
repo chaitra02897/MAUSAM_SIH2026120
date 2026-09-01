@@ -2,11 +2,10 @@ const bcrypt = require('bcryptjs');
 const {
     createSession,
     getPool,
-    isValidEmail,
-    normalizeEmail,
+    isValidCustomId,
+    normalizeCustomId,
     readJson,
     sendJson,
-    validatePreferences
 } = require('../../lib/auth');
 
 module.exports = async function register(req, res) {
@@ -17,18 +16,19 @@ module.exports = async function register(req, res) {
 
     try {
         const body = await readJson(req);
-        const email = normalizeEmail(body.email);
+        const customId = normalizeCustomId(body.customId || body.username);
+        const email = typeof body.email === 'string' && body.email.trim() ? body.email.trim().toLowerCase() : null;
         const password = typeof body.password === 'string' ? body.password : '';
-        const preferences = validatePreferences(body);
+        const confirmPassword = typeof body.confirmPassword === 'string' ? body.confirmPassword : '';
 
-        if (!isValidEmail(email)) {
-            return sendJson(res, 400, { error: 'A valid email is required' });
+        if (!isValidCustomId(customId)) {
+            return sendJson(res, 400, { error: 'Custom ID must be 3-50 letters, numbers, dots, underscores, or hyphens' });
         }
         if (password.length < 8 || password.length > 72) {
             return sendJson(res, 400, { error: 'Password must be between 8 and 72 characters' });
         }
-        if (preferences.error) {
-            return sendJson(res, 400, { error: preferences.error });
+        if (password !== confirmPassword) {
+            return sendJson(res, 400, { error: 'Passwords do not match' });
         }
 
         const connection = await getPool().getConnection();
@@ -39,28 +39,28 @@ module.exports = async function register(req, res) {
                     (name, daily_routine, outdoor_time, weather_interests, weather_use)
                  VALUES (?, ?, ?, ?, ?)`,
                 [
-                    preferences.value.name,
-                    preferences.value.dailyRoutine,
-                    preferences.value.outdoorTime,
-                    JSON.stringify(preferences.value.weatherInterests),
-                    preferences.value.weatherUse
+                    typeof body.name === 'string' && body.name.trim() ? body.name.trim() : customId,
+                    'pending',
+                    'pending',
+                    JSON.stringify(['pending']),
+                    'pending'
                 ]
             );
 
             const userId = userResult.insertId;
             const passwordHash = await bcrypt.hash(password, 12);
             await connection.execute(
-                `INSERT INTO login_data (user_id, email, password_hash)
-                 VALUES (?, ?, ?)`,
-                [userId, email, passwordHash]
+                `INSERT INTO login_data (user_id, custom_id, email, password_hash)
+                 VALUES (?, ?, ?, ?)`,
+                [userId, customId, email, passwordHash]
             );
             await createSession(userId, res, connection);
             await connection.commit();
-            return sendJson(res, 201, { user: { user_id: userId, name: preferences.value.name, email } });
+            return sendJson(res, 201, { user: { user_id: userId, name: typeof body.name === 'string' && body.name.trim() ? body.name.trim() : customId, customId, onboardingCompleted: false } });
         } catch (error) {
             await connection.rollback();
             if (error.code === 'ER_DUP_ENTRY') {
-                return sendJson(res, 409, { error: 'An account with that email already exists' });
+                return sendJson(res, 409, { error: 'That Custom ID is already in use' });
             }
             throw error;
         } finally {
