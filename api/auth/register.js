@@ -3,6 +3,7 @@ const {
     createSession,
     getPool,
     isValidCustomId,
+    logDatabaseError,
     normalizeCustomId,
     readJson,
     sendJson,
@@ -31,9 +32,13 @@ module.exports = async function register(req, res) {
             return sendJson(res, 400, { error: 'Passwords do not match' });
         }
 
-        const connection = await getPool().getConnection();
+        let connection;
+        let operation = 'MySQL connection acquisition';
         try {
+            connection = await getPool().getConnection();
+            operation = 'transaction start';
             await connection.beginTransaction();
+            operation = 'users INSERT';
             const [userResult] = await connection.execute(
                 `INSERT INTO users
                     (name, daily_routine, outdoor_time, weather_interests, weather_use)
@@ -49,27 +54,38 @@ module.exports = async function register(req, res) {
 
             const userId = userResult.insertId;
             const passwordHash = await bcrypt.hash(password, 12);
+            operation = 'login_data INSERT';
             await connection.execute(
                 `INSERT INTO login_data (user_id, custom_id, email, password_hash)
                  VALUES (?, ?, ?, ?)`,
                 [userId, customId, email, passwordHash]
             );
+            operation = 'auth_sessions INSERT';
             await createSession(userId, res, connection);
+            operation = 'transaction commit';
             await connection.commit();
             return sendJson(res, 201, { user: { user_id: userId, name: typeof body.name === 'string' && body.name.trim() ? body.name.trim() : customId, customId, onboardingCompleted: false } });
         } catch (error) {
-            await connection.rollback();
+            logDatabaseError(`register ${operation}`, error);
+            if (connection) {
+                try {
+                    await connection.rollback();
+                } catch (rollbackError) {
+                    logDatabaseError('register transaction rollback', rollbackError);
+                }
+            }
             if (error.code === 'ER_DUP_ENTRY') {
                 return sendJson(res, 409, { error: 'That Custom ID is already in use' });
             }
             throw error;
         } finally {
-            connection.release();
+            if (connection) connection.release();
         }
     } catch (error) {
         if (error.statusCode) {
             return sendJson(res, error.statusCode, { error: error.message });
         }
+        logDatabaseError('register account creation', error);
         return sendJson(res, 500, { error: 'Unable to create account' });
     }
 };
