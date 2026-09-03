@@ -24,7 +24,7 @@
         body {
             font-family: 'Plus Jakarta Sans', sans-serif;
             background: #0f0a1e;
-            color: #d8b4fe;
+            color: #6D28D9;
             overflow-x: hidden;
         }
         .glass-card {
@@ -1577,6 +1577,670 @@
             });
         }
     </script>
+
+
+<!-- ============================================================ -->
+<!-- MAUSAM PENGUIN ASSISTANT - ADDED FROM index(chat).txt -->
+<!-- Original current code above this point is preserved unchanged. -->
+<!-- ============================================================ -->
+<!-- MAUSAM PENGUIN ASSISTANT -->
+
+<div id="mausam-penguin">
+
+    <button id="penguin-button" onclick="toggleMausamChat()">
+        🐧
+    </button>
+
+    <div id="mausam-chat">
+
+        <div class="mausam-header">
+
+            <div class="mausam-title">
+
+                <div class="penguin-small">🐧</div>
+
+                <div>
+                    <div class="mausam-name">
+                        MAUSAM Assistant
+                    </div>
+
+                    <div class="mausam-status">
+                        <span class="online-dot"></span>
+                        Online
+                    </div>
+                </div>
+
+            </div>
+
+            <button class="close-chat"
+                    onclick="toggleMausamChat()">
+                ×
+            </button>
+
+        </div>
+
+
+        <div id="mausam-messages">
+
+            <div class="message bot-message">
+
+                <div class="message-avatar">
+                    🐧
+                </div>
+
+                <div class="message-content">
+
+                    Hello! 👋<br>
+
+                    I'm <b>MAUSAM Assistant</b>.<br><br>
+
+                    I can help you with weather
+                    information and alerts. 🌦️
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <div class="quick-questions">
+
+            <button onclick="quickMessage('What is the weather today?')">
+                🌤️ Today's Weather
+            </button>
+
+            <button onclick="quickMessage('Will it rain today?')">
+                🌧️ Rain Forecast
+            </button>
+
+            <button onclick="quickMessage('What is the temperature?')">
+                🌡️ Temperature
+            </button>
+
+        </div>
+
+
+        <div class="mausam-input-area">
+
+            <input
+                type="text"
+                id="mausam-input"
+                placeholder="Ask MAUSAM something..."
+                autocomplete="off"
+                onkeydown="handleMausamKey(event)"
+            >
+
+            <button id="send-button"
+                    onclick="sendMausamMessage()">
+                ➤
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+<!-- END MAUSAM PENGUIN -->
+
+
+<style>
+
+/* MAUSAM PENGUIN */
+
+#mausam-penguin {
+    position: fixed;
+    right: 25px;
+    bottom: 25px;
+    z-index: 99999;
+    font-family: Arial, sans-serif;
+}
+
+
+/* Penguin Button */
+
+#penguin-button {
+    width: 65px;
+    height: 65px;
+    border-radius: 50%;
+    border: none;
+    background: white;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+    font-size: 34px;
+    cursor: pointer;
+}
+
+
+/* Chat Window */
+
+#mausam-chat {
+    display: none;
+    position: absolute;
+    right: 0;
+    bottom: 80px;
+    width: 350px;
+    max-width: calc(100vw - 30px);
+    height: 500px;
+    background: white;
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.25);
+    border: 1px solid #e5e7eb;
+    flex-direction: column;
+}
+
+
+/* Header */
+
+.mausam-header {
+    height: 70px;
+    background: #6D28D9;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+}
+
+
+.mausam-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+
+.penguin-small {
+    width: 42px;
+    height: 42px;
+    background: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 25px;
+}
+
+
+.mausam-name {
+    font-size: 16px;
+    font-weight: bold;
+}
+
+
+.mausam-status {
+    font-size: 12px;
+    margin-top: 3px;
+}
+
+
+.online-dot {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    background: #31e981;
+    border-radius: 50%;
+    margin-right: 4px;
+}
+
+
+.close-chat {
+    background: transparent;
+    border: none;
+    color: white;
+    font-size: 28px;
+    cursor: pointer;
+}
+
+
+/* Messages */
+
+#mausam-messages {
+    flex: 1;
+    padding: 15px;
+    overflow-y: auto;
+    background: #f7faff;
+}
+
+
+.message {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+    align-items: flex-start;
+}
+
+
+.message-avatar {
+    width: 30px;
+    height: 30px;
+    min-width: 30px;
+    background: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+
+.message-content {
+    max-width: 80%;
+    padding: 10px 13px;
+    border-radius: 13px;
+    font-size: 14px;
+    line-height: 1.5;
+}
+}
+
+
+.bot-message .message-content {
+    background: #6D28D9;
+    color: white;
+    border-top-left-radius: 3px;
+}
+
+
+/* User Message */
+
+.user-message {
+    justify-content: flex-end;
+}
+
+
+.user-message .message-content {
+    background: #6D28D9;
+    color: white;
+    border-top-right-radius: 3px;
+}
+
+
+/* Quick Questions */
+
+.quick-questions {
+    padding: 8px;
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    border-top: 1px solid #eee;
+    background: white;
+}
+
+
+.quick-questions button {
+    white-space: nowrap;
+    border: 1px solid #b9d9f5;
+    background: #6D28D9;
+    color: white;
+    border-radius: 15px;
+    padding: 7px 10px;
+    font-size: 11px;
+    cursor: pointer;
+}
+
+
+/* Input */
+
+.mausam-input-area {
+    display: flex;
+    padding: 10px;
+    border-top: 1px solid #eee;
+    background: white;
+    gap: 8px;
+}
+
+
+#mausam-input {
+    flex: 1;
+    border: 1px solid #d2d7dc;
+    border-radius: 22px;
+    padding: 11px 14px;
+    outline: none;
+    font-size: 14px;
+}
+
+
+#send-button {
+    width: 42px;
+    height: 42px;
+    border: none;
+    border-radius: 50%;
+    background: #6D28D9;
+    color: white;
+    font-size: 18px;
+    cursor: pointer;
+}
+
+
+/* Mobile */
+
+@media (max-width: 500px) {
+
+    #mausam-penguin {
+        right: 15px;
+        bottom: 15px;
+    }
+
+    #mausam-chat {
+        width: calc(100vw - 30px);
+	height: 70vh;
+      }
+}
+
+</style>
+
+<script>
+
+/* MAUSAM ASSISTANT */
+
+
+/* Open / Close Chat */
+
+function toggleMausamChat() {
+
+    const chat = document.getElementById("mausam-chat");
+
+    if (chat.style.display === "flex") {
+
+        chat.style.display = "none";
+
+    } else {
+
+        chat.style.display = "flex";
+
+        setTimeout(function() {
+
+            document.getElementById("mausam-input").focus();
+
+        }, 100);
+
+    }
+
+}
+
+
+/* Send Message */
+
+function sendMausamMessage() {
+
+    const input = document.getElementById("mausam-input");
+
+    const message = input.value.trim();
+
+    if (message === "") {
+        return;
+    }
+
+    addUserMessage(message);
+
+    input.value = "";
+
+    showTyping();
+
+    setTimeout(function() {
+
+        removeTyping();
+
+        const response = getMausamResponse(message);
+
+        addBotMessage(response);
+
+    }, 800);
+
+}
+
+
+/* Enter Key */
+
+function handleMausamKey(event) {
+
+    if (event.key === "Enter") {
+
+        sendMausamMessage();
+
+    }
+
+}
+
+
+/* Quick Questions */
+
+function quickMessage(message) {
+
+    document.getElementById("mausam-input").value = message;
+
+    sendMausamMessage();
+
+}
+
+
+/* Add User Message */
+
+function addUserMessage(message) {
+
+    const container =
+        document.getElementById("mausam-messages");
+
+    const div = document.createElement("div");
+
+    div.className = "message user-message";
+
+    div.innerHTML = `
+        <div class="message-content">
+            ${escapeHTML(message)}
+        </div>
+    `;
+
+    container.appendChild(div);
+
+    scrollMessages();
+
+}
+
+
+/* Add Bot Message */
+
+function addBotMessage(message) {
+
+    const container =
+        document.getElementById("mausam-messages");
+
+    const div = document.createElement("div");
+
+    div.className = "message bot-message";
+
+    div.innerHTML = `
+        <div class="message-avatar">🐧</div>
+
+        <div class="message-content">
+            ${message}
+        </div>
+    `;
+
+    container.appendChild(div);
+
+    scrollMessages();
+
+}
+
+
+/* Typing */
+
+function showTyping() {
+
+    const container =
+        document.getElementById("mausam-messages");
+
+    const div = document.createElement("div");
+
+    div.id = "typing-message";
+
+    div.className = "message bot-message";
+
+    div.innerHTML = `
+        <div class="message-avatar">🐧</div>
+
+        <div class="message-content">
+            Typing...
+        </div>
+    `;
+
+    container.appendChild(div);
+
+    scrollMessages();
+
+}
+
+
+/* Remove Typing */
+
+function removeTyping() {
+
+    const typing =
+        document.getElementById("typing-message");
+
+    if (typing) {
+
+        typing.remove();
+
+    }
+
+}
+
+
+/* Scroll Messages */
+
+function scrollMessages() {
+
+    const container =
+        document.getElementById("mausam-messages");
+
+    container.scrollTop =
+        container.scrollHeight;
+
+}
+
+
+/* MAUSAM Responses */
+
+function getMausamResponse(message) {
+
+    const text = message.toLowerCase();
+    const weatherData = window.mausamWeatherData || {};
+    const hasValue = value => value !== null && value !== undefined && value !== '';
+    const valueOrUnavailable = (value, suffix = '') => hasValue(value) ? `${value}${suffix}` : 'unavailable';
+
+
+    if (
+        text.includes("hello") ||
+        text.includes("hi") ||
+        text.includes("hey")
+    ) {
+
+        return `
+            Hello! 👋🐧<br><br>
+            I'm <b>MAUSAM Assistant</b>.
+            How can I help you?
+        `;
+
+    }
+
+
+    if (
+        text.includes("rain") ||
+        text.includes("raining")
+    ) {
+
+        const precipitation = Number.isFinite(weatherData.precipitation)
+            ? `${weatherData.precipitation.toFixed(1)} mm`
+            : 'unavailable';
+        return `🌧️ Precipitation is currently ${precipitation}.`;
+
+    }
+
+
+    if (
+        text.includes("temperature") ||
+        text.includes("temp")
+    ) {
+
+        return `🌡️ The current temperature is ${valueOrUnavailable(weatherData.temperatureC, '°C')}.`;
+
+    }
+
+
+    if (text.includes("feels like") || text.includes("feel like")) {
+        return `🌡️ It feels like ${valueOrUnavailable(weatherData.feelsLikeC, '°C')}.`;
+    }
+
+
+    if (text.includes("humidity")) {
+        return `💧 Humidity is currently ${valueOrUnavailable(weatherData.humidity, '%')}.`;
+    }
+
+
+    if (text.includes("wind") || text.includes("breeze")) {
+        return `💨 Wind speed is currently ${valueOrUnavailable(weatherData.windSpeedKmh, ' km/h')}.`;
+    }
+
+
+    if (text.includes("aqi") || text.includes("air quality")) {
+        const aqi = hasValue(weatherData.aqi) ? weatherData.aqi : 'unavailable';
+        const aqiLabel = hasValue(weatherData.aqiLabel) ? weatherData.aqiLabel : 'unavailable';
+        return `🌿 The air quality index is ${aqi} (${aqiLabel}).`;
+    }
+
+
+    if (text.includes("location") || text.includes("where am i")) {
+        return `📍 Your current location is ${valueOrUnavailable(weatherData.locationLabel)}.`;
+    }
+
+
+    if (text.includes("icon") || text.includes("symbol")) {
+        return `🌤️ The current weather icon is ${valueOrUnavailable(weatherData.iconClass)}.`;
+    }
+
+
+    if (
+        text.includes("weather") ||
+        text.includes("forecast")
+    ) {
+
+        return `🌦️ It is currently ${valueOrUnavailable(weatherData.weatherCondition)}, with a temperature of ${valueOrUnavailable(weatherData.temperatureC, '°C')}.`;
+
+    }
+return `
+    🐧 I'm here to help with weather
+    information!<br><br>
+
+    Try asking:<br>
+
+    • What's the weather today?<br>
+
+    • Will it rain today?<br>
+
+    • What is the temperature?
+`;
+
+}
+
+
+/* Security */
+
+function escapeHTML(text) {
+
+    const div = document.createElement("div");
+
+    div.textContent = text;
+
+    return div.innerHTML;
+
+}
+
+</script>
+
+
+
 </body>
 </html>
 </body>
