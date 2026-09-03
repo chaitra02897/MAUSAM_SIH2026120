@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Penguin Weather Notification (Demo)</title>
+  <style>
+    /* Container */
+    #penguin-notification {
+      --width: 320px;
+      --height: 140px;
+      position: fixed;
+      left: 12px;
+      bottom: 12px;
+      width: var(--width);
+      height: var(--height);
+      pointer-events: auto;
+      z-index: 9999;
+      transform: translateX(-120%);
+      transition: transform 700ms cubic-bezier(.22,.9,.36,1);
+      display: flex;
+      align-items: flex-end;
+      gap: 12px;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    }
+
+    /* speech bubble */
+    #penguin-notification .bubble {
+      background: linear-gradient(180deg,#fff 0%, #f1f7ff 100%);
+      border-radius: 12px;
+      padding: 12px 14px;
+      box-shadow: 0 8px 22px rgba(14,30,60,0.18);
+      max-width: calc(var(--width) - 120px);
+      color: #07203a;
+      font-size: 14px;
+      line-height: 1.2;
+      position: relative;
+    }
+    #penguin-notification .bubble::after{
+      content: "";
+      position: absolute;
+      left: -8px;
+      bottom: 10px;
+      width: 0;height:0;
+      border-top: 8px solid transparent;
+      border-bottom: 8px solid transparent;
+      border-right: 10px solid #fff;
+      filter: drop-shadow(-2px 2px 2px rgba(14,30,60,0.06));
+    }
+
+    /* Penguin box */
+    .penguin-wrap {
+      width: 96px;
+      height: 120px;
+      display:flex;
+      align-items:flex-end;
+      justify-content:center;
+      position: relative;
+      pointer-events: none; /* so that it doesn't block clicks behind bubble */
+    }
+
+    /* Wave animation toggled via .waving */
+    .wave {
+      transform-origin: 20px 20px;
+    }
+    .waving .wave {
+      animation: wave-hand 900ms ease-in-out infinite;
+    }
+    @keyframes wave-hand {
+      0% { transform: rotate(0deg); }
+      20% { transform: rotate(-28deg); }
+      40% { transform: rotate(14deg); }
+      60% { transform: rotate(-20deg); }
+      80% { transform: rotate(8deg); }
+      100% { transform: rotate(0deg); }
+    }
+
+    /* Entry/exit helper classes */
+    #penguin-notification.show {
+      transform: translateX(0);
+    }
+    #penguin-notification.out {
+      transform: translateX(-140%);
+      transition: transform 700ms cubic-bezier(.25,.8,.25,1);
+    }
+
+    /* small responsive tweak */
+    @media (max-width: 420px){
+      :root{--width: 280px}
+      #penguin-notification { left: 8px; bottom: 8px}
+    }
+
+    /* demo button */
+    .demo-btn { position: fixed; right: 16px; bottom: 16px; z-index: 9998 }
+  </style>
+</head>
+<body>
+  <!--
+    Penguin Weather Notification
+    - A self-contained widget that fetches the current weather (via Open-Meteo) and displays
+      a penguin that walks in, waves, shows a message, then walks away.
+
+    Integration:
+    - To integrate this into an existing site, copy the HTML markup inside <body> and the
+      <style> and <script> sections into your site. Or include this file via an iframe.
+    - This demo uses the browser geolocation API. If you prefer a server-side location or
+      a fixed location, call showPenguinNotification({lat:..., lon:...}).
+  -->
+
+  <div id="penguin-notification" aria-live="polite" role="status">
+    <div class="penguin-wrap" aria-hidden="true">
+      <!-- Simple inline SVG penguin; the right 'wing' has class 'wave' -->
+      <svg width="96" height="120" viewBox="0 0 96 120" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <g transform="translate(8,4)">
+          <!-- body -->
+          <ellipse cx="40" cy="70" rx="32" ry="40" fill="#0b5b82" />
+          <!-- belly -->
+          <ellipse cx="40" cy="70" rx="18" ry="28" fill="#fff" />
+          <!-- head -->
+          <circle cx="40" cy="34" r="22" fill="#0b5b82" />
+          <!-- face -->
+          <ellipse cx="40" cy="36" rx="12" ry="10" fill="#fff" />
+          <circle cx="34" cy="34" r="2" fill="#07203a" />
+          <circle cx="46" cy="34" r="2" fill="#07203a" />
+          <!-- beak -->
+          <path d="M40 40 l6 6 h-12z" fill="#ffb34d" />
+          <!-- left wing -->
+          <path d="M14 68 q-10 12 2 22 q18 6 18 0 q-6-18-10-28 q-6-8 -10-14z" fill="#073c52" opacity="0.98"/>
+          <!-- right wing (wave) -->
+          <g class="wave" transform="translate(56,60)">
+            <path d="M0 0 q8 -10 18 -6 q12 6 6 22 q-6 16 -18 12 q-12-4 -12-24z" fill="#073c52" />
+          </g>
+          <!-- feet -->
+          <ellipse cx="28" cy="108" rx="8" ry="4" fill="#ffb34d" />
+          <ellipse cx="52" cy="108" rx="8" ry="4" fill="#ffb34d" />
+        </g>
+      </svg>
+    </div>
+
+    <div class="bubble">
+      <strong id="penguin-title">Hello!</strong>
+      <div id="penguin-message">Checking the weather...</div>
+    </div>
+  </div>
+
+  <button class="demo-btn" onclick="showPenguinNotification({duration:7000})">Show Penguin (demo)</button>
+
+  <script>
+    // Utility: map Open-Meteo weathercodes to friendly descriptions
+    const weatherCodeMap = {
+      0: 'clear sky',
+      1: 'mainly clear',
+      2: 'partly cloudy',
+      3: 'overcast',
+      45: 'fog',
+      48: 'depositing rime fog',
+      51: 'light drizzle',
+      53: 'moderate drizzle',
+      55: 'dense drizzle',
+      56: 'freezing drizzle',
+      57: 'dense freezing drizzle',
+      61: 'slight rain',
+      63: 'moderate rain',
+      65: 'heavy rain',
+      66: 'freezing rain',
+      67: 'heavy freezing rain',
+      71: 'slight snow',
+      73: 'moderate snow',
+      75: 'heavy snow',
+      77: 'snow grains',
+      80: 'rain showers',
+      81: 'moderate rain showers',
+      82: 'violent rain showers',
+      85: 'snow showers',
+      86: 'heavy snow showers',
+      95: 'thunderstorm',
+      96: 'thunderstorm with slight hail',
+      99: 'thunderstorm with heavy hail'
+    };
+
+    function friendlyMessage(tempC, weatherCode) {
+      // Choose a short penguin-style line based on weather and temperature
+      const wc = weatherCodeMap[weatherCode] || 'unknown weather';
+      if (weatherCode >= 80 && weatherCode <= 82) return `Looks rainy — don't forget an umbrella!`;
+      if (weatherCode >= 95) return `Thunderstorms nearby — stay safe indoors!`;
+      if (weatherCode === 71 || weatherCode === 73 || weatherCode === 75 || weatherCode === 85 || weatherCode === 86) return `Brr — it's snowy out! Perfect for slides.`;
+      if (tempC <= 0) return `It's freezing (${Math.round(tempC)}°C). Brrr!`;
+      if (tempC <= 10) return `Chilly (${Math.round(tempC)}°C) — a cosy scarf helps.`;
+      if (tempC <= 20) return `Cool and comfy (${Math.round(tempC)}°C).`;
+      if (tempC <= 28) return `Nice weather: ${Math.round(tempC)}°C — a good day to waddle around.`;
+      return `Warm day (${Math.round(tempC)}°C)! Stay hydrated.`;
+    }
+
+    async function fetchWeatherFor(lat, lon) {
+      // Uses Open-Meteo (no API key required) to fetch current weather
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${encodeURIComponent(lat)}&longitude=${encodeURIComponent(lon)}&current_weather=true`;
+      const resp = await fetch(url, {cache: 'no-store'});
+      if (!resp.ok) throw new Error(`Weather fetch failed: ${resp.status}`);
+      const data = await resp.json();
+      if (!data || !data.current_weather) throw new Error('No current weather available');
+      return { temp: data.current_weather.temperature, code: data.current_weather.weathercode };
+    }
+
+    // Main function to show notification
+    // options: { duration: milliseconds to stay visible, lat, lon }
+    async function showPenguinNotification(options = {}){
+      const wrapper = document.getElementById('penguin-notification');
+      const title = document.getElementById('penguin-title');
+      const msg = document.getElementById('penguin-message');
+
+      // Clear any previous state
+      wrapper.classList.remove('out');
+      wrapper.classList.add('show');
+      wrapper.classList.add('waving');
+
+      // Determine location: prefer options, then geolocation, then fallback coordinates
+      let lat = options.lat, lon = options.lon;
+      if (lat == null || lon == null) {
+        try {
+          const pos = await new Promise((res, rej) => {
+            let called=false;
+            if (!navigator.geolocation) return rej(new Error('Geolocation unsupported'));
+            const id = navigator.geolocation.getCurrentPosition(p => { called=true; res(p) }, e => { called=true; rej(e) }, {timeout:8000});
+            // fallback timeout
+            setTimeout(()=>{ if(!called) { try { navigator.geolocation.clearWatch(id) }catch(e){}; rej(new Error('Geolocation timeout')) } },9000);
+          });
+          lat = pos.coords.latitude; lon = pos.coords.longitude;
+        } catch (e) {
+          // fallback: center of London (or you can choose any default)
+          console.warn('Geolocation failed, falling back to default location:', e.message);
+          lat = 51.5072; lon = -0.1276;
+        }
+      }
+
+      try {
+        const w = await fetchWeatherFor(lat, lon);
+        const line = friendlyMessage(w.temp, w.code);
+        title.textContent = weatherCodeMap[w.code] ? weatherCodeMap[w.code].charAt(0).toUpperCase() + weatherCodeMap[w.code].slice(1) : 'Weather update';
+        msg.textContent = line;
+      } catch (err) {
+        console.error('Weather error:', err);
+        title.textContent = 'Weather unavailable';
+        msg.textContent = 'I could not fetch the weather right now — but I did my best!';
+      }
+
+      // keep waving for a bit then stop
+      const wavingDuration = options.wavingDuration || Math.max(3000, (options.duration||5000) - 1000);
+      setTimeout(()=> wrapper.classList.remove('waving'), wavingDuration);
+
+      // hide after duration
+      const duration = options.duration || 6000;
+      clearTimeout(wrapper._hideTimeout);
+      wrapper._hideTimeout = setTimeout(()=>{
+        wrapper.classList.remove('show');
+        wrapper.classList.add('out');
+      }, duration);
+
+      // accessibility: announce via ARIA live
+      // (the aria-live region is the wrapper with role=status)
+    }
+
+    // Expose globally so pages/scripts can trigger it
+    window.showPenguinNotification = showPenguinNotification;
+
+    // Optionally auto-show on load for demo
+    // Uncomment the line below to automatically show on page load
+    // window.addEventListener('load', ()=> showPenguinNotification({duration:7000}));
+  </script>
+</body>
+</html>
